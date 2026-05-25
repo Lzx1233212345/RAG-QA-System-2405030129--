@@ -28,3 +28,11 @@ Thumbs.db
 # Temporary files
 temp/
 tmp/
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# EXE files
+*.exe
