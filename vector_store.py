@@ -6,7 +6,7 @@ AI辅助生成
 import os
 import shutil
 from typing import List, Optional
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OllamaEmbeddings
 from config import CHROMA_DB_PATH, EMBEDDING_MODEL, TOP_K

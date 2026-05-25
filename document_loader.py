@@ -6,7 +6,7 @@ AI辅助生成
 import os
 from typing import List
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 class DocumentLoader:
