@@ -1,12 +1,13 @@
 """
 RAG问答链模块
 整合检索器和Ollama大模型构建完整的RAG问答系统
-AI辅助生成
+简化版本 - 兼容最新LangChain
 """
 from typing import Optional, List, Dict
-from langchain.chains import ConversationalRetrievalChain
+import requests
+import json
 from langchain_community.llms import Ollama
-from langchain.schema import Document
+from langchain_core.documents import Document
 from vector_store import VectorStoreManager
 from config import OLLAMA_BASE_URL, DEFAULT_MODEL
 
@@ -47,38 +48,7 @@ class RAGChain:
         self.model_name = model_name
         self.base_url = base_url
         self.llm = Ollama(model=model_name, base_url=base_url)
-        self.chain: Optional[ConversationalRetrievalChain] = None
         self.vector_manager = VectorStoreManager()
-
-    def initialize_chain(self) -> bool:
-        """
-        初始化问答链
-
-        Returns:
-            是否成功初始化
-        """
-        try:
-            retriever = self.vector_manager.get_retriever()
-            self.chain = ConversationalRetrievalChain.from_llm(
-                llm=self.llm,
-                retriever=retriever,
-                return_source_documents=True,
-                combine_docs_chain_kwargs={"prompt": self._create_prompt()}
-            )
-            print("RAG问答链初始化成功!")
-            return True
-        except Exception as e:
-            print(f"RAG问答链初始化失败: {str(e)}")
-            return False
-
-    def _create_prompt(self):
-        """创建自定义提示词"""
-        from langchain.prompts import PromptTemplate
-
-        return PromptTemplate(
-            template=SYSTEM_PROMPT,
-            input_variables=["context", "question"]
-        )
 
     def build_knowledge_base(self, documents: List[Document]) -> bool:
         """
@@ -98,6 +68,31 @@ class RAGChain:
             print(f"知识库构建失败: {str(e)}")
             return False
 
+    def _call_ollama(self, prompt: str) -> str:
+        """
+        直接调用Ollama API
+
+        Args:
+            prompt: 提示词
+
+        Returns:
+            模型回复
+        """
+        url = f"{self.base_url}/api/generate"
+        payload = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            result = response.json()
+            return result.get("response", "")
+        except Exception as e:
+            return f"调用Ollama时发生错误: {str(e)}"
+
     def ask(self, question: str, chat_history: List[Dict[str, str]] = None) -> Dict:
         """
         提问
@@ -109,25 +104,23 @@ class RAGChain:
         Returns:
             包含答案和相关文档的字典
         """
-        if self.chain is None:
-            if not self.initialize_chain():
-                return {
-                    "answer": "RAG问答链未初始化，请先构建知识库",
-                    "source_documents": []
-                }
-
-        if chat_history is None:
-            chat_history = []
-
         try:
-            result = self.chain({
-                "question": question,
-                "chat_history": chat_history
-            })
-
+            # 检索相关文档
+            retriever = self.vector_manager.get_retriever()
+            docs = retriever.invoke(question)
+            
+            # 构建上下文
+            context = "\n\n".join([doc.page_content for doc in docs])
+            
+            # 构建提示词
+            full_prompt = SYSTEM_PROMPT.format(context=context, question=question)
+            
+            # 调用Ollama
+            answer = self._call_ollama(full_prompt)
+            
             return {
-                "answer": result.get("answer", ""),
-                "source_documents": result.get("source_documents", [])
+                "answer": answer,
+                "source_documents": docs
             }
         except Exception as e:
             return {
@@ -164,9 +157,6 @@ if __name__ == "__main__":
 
         print("\n正在构建知识库...")
         rag_chain.build_knowledge_base(split_docs)
-
-        print("\n初始化问答链...")
-        rag_chain.initialize_chain()
 
         test_questions = [
             "什么是自然语言处理？",
