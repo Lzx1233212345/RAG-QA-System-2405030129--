@@ -7,9 +7,11 @@ __pycache__/
 venv/
 env/
 .env
+.venv/
 
 # Streamlit
 .streamlit/
+secrets.toml
 
 # Chroma DB
 chroma_db/
@@ -17,13 +19,18 @@ chroma_db/
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
+logs/
 
 # Temporary files
 temp/
@@ -36,3 +43,23 @@ build/
 
 # EXE files
 *.exe
+
+# Python egg-info
+*.egg-info/
+.installed.cfg
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.sqlite
+
+# Cache
+.cache/
+.cache-dir/
